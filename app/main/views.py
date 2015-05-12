@@ -1,13 +1,18 @@
 from flask import render_template, redirect, url_for, abort, flash, request,\
-    current_app, make_response
+    current_app, make_response, send_file, session
 from flask.ext.login import login_required, current_user
 from . import main
 from .forms import EditProfileForm, EditProfileAdminForm, PostForm,\
     CommentForm
-from .. import db
+from .. import db, socketio
 from ..models import Permission, Role, User, Post, Comment
 from ..decorators import admin_required, permission_required
+from datetime import datetime
+from flask.ext.socketio import join_room
 
+@main.route('/ng', methods=['GET'])
+def angular():
+    return send_file("templates/angular/index.html")
 
 @main.route('/', methods=['GET', 'POST'])
 def index():
@@ -211,6 +216,11 @@ def show_followed():
     resp.set_cookie('show_followed', '1', max_age=30*24*60*60)
     return resp
 
+@main.route('/chat')
+@login_required
+def show_chat():
+    friends = current_user.followed_users
+    return render_template('chat.html', title='Chat rooms', friends=friends)
 
 @main.route('/moderate')
 @login_required
@@ -245,3 +255,32 @@ def moderate_disable(id):
     db.session.add(comment)
     return redirect(url_for('.moderate',
                             page=request.args.get('page', 1, type=int)))
+
+@socketio.on('my event')
+def handle_my_custom_event(json):
+    print('reloaded on: '+ str(datetime.now()))
+
+@socketio.on('income chat')
+def handle_chat_message(data):
+    socketio.emit('sendMessage', data)
+
+@socketio.on('join room')
+def handle_join_room(data):
+    join_room(data['room'])
+    socketio.emit('sendChat', data, room=data['room'])
+
+@socketio.on('create_room')
+def create_room(data):
+    friend_id = data['id']
+    if session['user_id'] < friend_id:
+        room = str(session['user_id']) + '_' + str(friend_id)
+    else:
+        room = str(friend_id) + '_' + str(session['user_id'])
+    join_room(room)
+    return_data = dict()
+    return_data['id'] = friend_id
+    return_data['message'] = data['message']
+    return_data['room_id'] = room
+
+    #broadcast the room
+    socketio.emit('broadcastRoom', return_data)

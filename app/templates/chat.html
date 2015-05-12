@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+{% import "_macros.html" as macros %}
+
+{% block title %}Flasky{% endblock %}
+
+{% block page_content %}
+<div class="page-header">
+    <h1>Hello, {% if current_user.is_authenticated() %}{{ current_user.username }}{% else %}Stranger{% endif %}!</h1>
+</div>
+<div class="post-tabs">
+    <ul class="nav nav-tabs">
+        <li><a href="{{ url_for('.show_all') }}">All</a></li>
+        {% if current_user.is_authenticated() %}
+        <li><a href="{{ url_for('.show_followed') }}">Following</a></li>
+        <li class="active">
+            <a href="{{ url_for('.show_chat') }}">Chat</a>
+        </li>
+        {% endif %}
+    </ul>
+</div>
+
+<div class="panel panel-info">
+      <div class="panel-heading">
+            <h3 class="panel-title">Chat</h3>
+      </div>
+      <div class="panel-body">
+        <select id="friendsList">
+        {% for friend in friends %}
+            <option value="{{friend.id}}">{{friend.username}}</option>
+        {% endfor %}
+        </select>
+        <button type="button" id="startChat" class="btn btn-primary">Start chat</button>
+      </div>
+</div>
+<div class="panel panel-primary">
+      <div class="panel-heading">
+            <h3 class="panel-title">Chat box</h3>
+      </div>
+      <div class="panel-body" id="chatBox">
+
+      </div>
+      <div class="form-group">
+          <label for="chatMessage" class="col-sm-2 control-label">ChatMessage:</label>
+          <div class="col-sm-10">
+              <input type="text" name="chatMessage" id="chatMessage" class="form-control">
+          </div>
+      </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script type="text/javascript">
+$(document).ready(function() {
+    var socket = io.connect('http://' + document.domain + ':' + location.port);
+    
+    socket.on('connect', function() {
+        socket.emit('my event', {data: 'I\'m connected!'});
+    });
+
+    var myId = {{current_user.id}};
+    // socket.on('incomeChat', function(data){
+    //     $('#chatBox').append(data['text']);
+    //     $('#chatBox').append("<br/>");
+    //     var newscrollHeight = $("#chatBox").prop("scrollHeight") - 20; 
+    //     $('#chatBox').animate({scrollTop: newscrollHeight}, 'normal');
+    // });
+    function addMessage(message){
+        $('#chatBox').append(message);
+        $('#chatBox').append("<br/>");
+        var newscrollHeight = $("#chatBox").prop("scrollHeight") - 20; 
+        $('#chatBox').animate({scrollTop: newscrollHeight}, 'normal');
+    }
+    socket.on('broadcastRoom', function(data){
+        if (myId == data['id']){
+            addMessage(data['message']);
+        }
+    });
+
+    // socket.on('sendChat' function(data){
+    //   addMessage(data['message']);
+    // });
+
+    $('#startChat').click(function(){
+        var friend_id = $('#friendsList').val();
+        var msg = $('#chatMessage').val();
+        socket.emit('create_room', {
+            id: friend_id,
+            message: msg
+        });
+    });
+});
+</script>
+
+{% endblock %}

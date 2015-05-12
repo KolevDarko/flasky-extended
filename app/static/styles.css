@@ -1,3 +1,8 @@
+div#chatBox {
+    height: 200px;
+    overflow: scroll;
+}
+
 .profile-thumbnail {
     position: absolute;
 }

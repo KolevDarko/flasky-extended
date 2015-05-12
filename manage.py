@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 import os
-from app import create_app, db
+from app import create_app, db, socketio
 from app.models import User, Follow, Role, Permission, Post, Comment
 from flask.ext.script import Manager, Shell
 from flask.ext.migrate import Migrate, MigrateCommand
+from flask.ext.login import current_user
 
 app = create_app(os.getenv('FLASK_CONFIG') or 'default')
 manager = Manager(app)
@@ -24,6 +25,7 @@ def test():
     tests = unittest.TestLoader().discover('tests')
     unittest.TextTestRunner(verbosity=2).run(tests)
 
-
 if __name__ == '__main__':
-    manager.run()
+    socketio.run(app)
+# if __name__ == '__main__':
+    # manager.run()
