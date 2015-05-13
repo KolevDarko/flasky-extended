@@ -1,5 +1,5 @@
 from flask import render_template, redirect, url_for, abort, flash, request,\
-    current_app, make_response, send_file, session
+    current_app, make_response, send_file, session, jsonify
 from flask.ext.login import login_required, current_user
 from . import main
 from .forms import EditProfileForm, EditProfileAdminForm, PostForm,\
@@ -256,6 +256,16 @@ def moderate_disable(id):
     return redirect(url_for('.moderate',
                             page=request.args.get('page', 1, type=int)))
 
+@main.route('/GetUserId')
+def get_user_id():
+    if current_user.is_authenticated():
+        my_id = current_user.id
+    else:
+        my_id = 0
+    return jsonify({
+        'id': my_id
+    })
+
 @socketio.on('my event')
 def handle_my_custom_event(json):
     print('reloaded on: '+ str(datetime.now()))
@@ -264,23 +274,33 @@ def handle_my_custom_event(json):
 def handle_chat_message(data):
     socketio.emit('sendMessage', data)
 
-@socketio.on('join room')
+@socketio.on('join_room')
 def handle_join_room(data):
-    join_room(data['room'])
-    socketio.emit('sendChat', data, room=data['room'])
+    if data['room_id'] is not None:
+        join_room(data['room_id'])
 
-@socketio.on('create_room')
-def create_room(data):
+created_rooms = []
+@socketio.on('start_chat')
+def start_chat(data):
     friend_id = data['id']
-    if session['user_id'] < friend_id:
-        room = str(session['user_id']) + '_' + str(friend_id)
+    room = get_room_id(session['user_id'], friend_id)
+    if room in created_rooms:
+        socketio.emit('income_chat', data['message'], room=room)
+        print("in created room")
     else:
-        room = str(friend_id) + '_' + str(session['user_id'])
-    join_room(room)
-    return_data = dict()
-    return_data['id'] = friend_id
-    return_data['message'] = data['message']
-    return_data['room_id'] = room
+        join_room(room)
+        created_rooms.append(room)
+        return_data = dict()
+        return_data['id'] = friend_id
+        return_data['message'] = data['message']
+        return_data['room_id'] = room
+        print("in new room")
 
-    #broadcast the room
-    socketio.emit('broadcastRoom', return_data)
+        #broadcast the room
+        socketio.emit('broadcast_room', return_data)
+
+def get_room_id(id1, id2):
+    if id1 < id2:
+        return str(id1) + '_' + str(id2)
+    else:
+        return str(id2) + '_' + str(id1)
