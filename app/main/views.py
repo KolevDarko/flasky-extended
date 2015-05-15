@@ -274,18 +274,22 @@ def handle_my_custom_event(json):
 def handle_chat_message(data):
     socketio.emit('sendMessage', data)
 
+created_rooms = []
 @socketio.on('join_room')
 def handle_join_room(data):
-    if data['room_id'] is not None:
-        join_room(data['room_id'])
+    join_room(data['room_id'])
+    if data['room_id'] not in created_rooms:
+        created_rooms.append(data['room_id'])
 
-created_rooms = []
 @socketio.on('start_chat')
 def start_chat(data):
     friend_id = data['id']
     room = get_room_id(session['user_id'], friend_id)
     if room in created_rooms:
-        socketio.emit('income_chat', data['message'], room=room)
+        socketio.emit('income_chat', {
+            'message': data['message'],
+            'receiver_id': data['id']
+            }, room=room)
         print("in created room")
     else:
         join_room(room)
