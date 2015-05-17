@@ -29,3 +29,7 @@ if __name__ == '__main__':
     socketio.run(app)
 # if __name__ == '__main__':
     # manager.run()
+
+    # return User.query.join(Follow, Follow.followed_id == User.id)\
+    #             .filter(Follow.follower_id == self.id).filter(Follow.followed_id != self.id).all()
+    

@@ -1,4 +1,4 @@
-from flask import render_template, redirect, request, url_for, flash, session
+from flask import render_template, redirect, request, url_for, flash, session, make_response
 from flask.ext.login import login_user, logout_user, login_required, \
     current_user
 from . import auth
@@ -34,7 +34,9 @@ def login():
         if user is not None and user.verify_password(form.password.data):
             login_user(user, form.remember_me.data)
             session['user_id'] = user.id
-            return redirect(request.args.get('next') or url_for('main.index'))
+            resp = make_response(redirect(request.args.get('next') or url_for('main.index')))
+            resp.set_cookie('user_id', str(user.id), max_age=30*24*60*60)
+            return resp
         flash('Invalid username or password.')
     return render_template('auth/login.html', form=form)
 

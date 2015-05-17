@@ -13,10 +13,22 @@
     {{ wtf.quick_form(form) }}
     {% endif %}
 </div>
-<input type="button" class="btn btn-default" id="myButton" value="Send to socket"/>
 
-<div id="chatBox">
-</div>
+
+  <div class="chat_box">
+    <div class="chat_head"> Chat Box</div>
+    <div class="chat_body"> 
+    {% for temp in followers %}
+        <div class="user" data-user-id="{{temp.follower.id}}" > 
+            <div class="chatName">
+                {{ temp.follower.username }}
+            </div>
+        </div>
+    {% endfor %}
+    </div>
+  </div>
+<div class="msg_container">
+  </div>
 <div class="post-tabs">
     <ul class="nav nav-tabs">
         <li{% if not show_followed %} class="active"{% endif %}><a href="{{ url_for('.show_all') }}">All</a></li>

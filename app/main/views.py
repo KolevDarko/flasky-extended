@@ -27,6 +27,9 @@ def index():
     show_followed = False
     if current_user.is_authenticated():
         show_followed = bool(request.cookies.get('show_followed', ''))
+        user_followers = current_user.followers
+    else:
+        user_followers = []
     if show_followed:
         query = current_user.followed_posts
     else:
@@ -35,8 +38,10 @@ def index():
         page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'],
         error_out=False)
     posts = pagination.items
+
     return render_template('index.html', form=form, posts=posts,
-                           show_followed=show_followed, pagination=pagination)
+                           show_followed=show_followed, pagination=pagination, 
+                           followers=user_followers)
 
 
 @main.route('/user/<username>')
@@ -283,28 +288,34 @@ def handle_join_room(data):
 
 @socketio.on('start_chat')
 def start_chat(data):
+    me = User.query.filter_by(id=session['user_id']).first()
     friend_id = data['id']
+    friend = User.query.filter_by(id=friend_id).first()
+    if session['user_id'] not in [f.id for f in friend.followed_users]:
+        print("forbidden")
+        return
+    #could add security
+    # friends = Follow.query.filter_by(follower_id=session['user_id'])
+    # if friend_id not in friends
     room = get_room_id(session['user_id'], friend_id)
+    return_data = dict()
+    return_data['id'] = friend_id
+    return_data['message'] = data['message']
+    return_data['room_id'] = room
+    return_data['sender_id'] = session['user_id']
+    return_data['sender_username'] = me.username
     if room in created_rooms:
-        socketio.emit('income_chat', {
-            'message': data['message'],
-            'receiver_id': data['id']
-            }, room=room)
-        print("in created room")
+        socketio.emit('income_chat', return_data, room=room)
+        print("in created room %s" % room)
     else:
         join_room(room)
         created_rooms.append(room)
-        return_data = dict()
-        return_data['id'] = friend_id
-        return_data['message'] = data['message']
-        return_data['room_id'] = room
-        print("in new room")
-
+        print("in new room %s" % room)
         #broadcast the room
         socketio.emit('broadcast_room', return_data)
 
 def get_room_id(id1, id2):
-    if id1 < id2:
+    if int(id1) < int(id2):
         return str(id1) + '_' + str(id2)
     else:
         return str(id2) + '_' + str(id1)

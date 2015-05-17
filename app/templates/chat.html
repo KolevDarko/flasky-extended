@@ -48,26 +48,3 @@
       </div>
 </div>
 {% endblock %}
-
-{% block scripts %}
-{{ super() }}
-
-<script type="text/javascript" src="/static/js/chat.js"></script>
-<script type="text/javascript">
-  $(document).ready(function() {
-    $.ajax({
-      method: 'get',
-      url: '/GetUserId',
-      success: function(result){
-        Cookies.set("user_id", result['id'], {
-          expires: 7
-        });
-      },
-      error: function(error){
-        console.log("error getting user id with error");
-        console.log(error);
-      }
-    });
-  });
-</script>
-{% endblock %}
