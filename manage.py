@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 import os
+<<<<<<< HEAD
+from app import create_app, db, socketio
+=======
 COV = None
 if os.environ.get('FLASK_COVERAGE'):
     import coverage
@@ -14,9 +17,11 @@ if os.path.exists('.env'):
             os.environ[var[0]] = var[1]
 
 from app import create_app, db
+>>>>>>> master
 from app.models import User, Follow, Role, Permission, Post, Comment
 from flask.ext.script import Manager, Shell
 from flask.ext.migrate import Migrate, MigrateCommand
+from flask.ext.login import current_user
 
 app = create_app(os.getenv('FLASK_CONFIG') or 'default')
 manager = Manager(app)
@@ -76,6 +81,11 @@ def deploy():
     # create self-follows for all users
     User.add_self_follows()
 
-
 if __name__ == '__main__':
-    manager.run()
+    socketio.run(app)
+# if __name__ == '__main__':
+    # manager.run()
+
+    # return User.query.join(Follow, Follow.followed_id == User.id)\
+    #             .filter(Follow.follower_id == self.id).filter(Follow.followed_id != self.id).all()
+    

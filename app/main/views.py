@@ -1,14 +1,19 @@
 from flask import render_template, redirect, url_for, abort, flash, request,\
-    current_app, make_response
+    current_app, make_response, send_file, session, jsonify
 from flask.ext.login import login_required, current_user
 from flask.ext.sqlalchemy import get_debug_queries
 from . import main
 from .forms import EditProfileForm, EditProfileAdminForm, PostForm,\
     CommentForm
-from .. import db
+from .. import db, socketio
 from ..models import Permission, Role, User, Post, Comment
 from ..decorators import admin_required, permission_required
+from datetime import datetime
+from flask.ext.socketio import join_room
 
+@main.route('/ng', methods=['GET'])
+def angular():
+    return send_file("templates/angular/index.html")
 
 @main.after_app_request
 def after_request(response):
@@ -45,6 +50,9 @@ def index():
     show_followed = False
     if current_user.is_authenticated():
         show_followed = bool(request.cookies.get('show_followed', ''))
+        user_followers = current_user.followers
+    else:
+        user_followers = []
     if show_followed:
         query = current_user.followed_posts
     else:
@@ -53,8 +61,10 @@ def index():
         page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'],
         error_out=False)
     posts = pagination.items
+
     return render_template('index.html', form=form, posts=posts,
-                           show_followed=show_followed, pagination=pagination)
+                           show_followed=show_followed, pagination=pagination, 
+                           followers=user_followers)
 
 
 @main.route('/user/<username>')
@@ -234,6 +244,11 @@ def show_followed():
     resp.set_cookie('show_followed', '1', max_age=30*24*60*60)
     return resp
 
+@main.route('/chat')
+@login_required
+def show_chat():
+    friends = current_user.followed_users
+    return render_template('chat.html', title='Chat rooms', friends=friends)
 
 @main.route('/moderate')
 @login_required
@@ -268,3 +283,62 @@ def moderate_disable(id):
     db.session.add(comment)
     return redirect(url_for('.moderate',
                             page=request.args.get('page', 1, type=int)))
+
+@main.route('/GetUserId')
+def get_user_id():
+    if current_user.is_authenticated():
+        my_id = current_user.id
+    else:
+        my_id = 0
+    return jsonify({
+        'id': my_id
+    })
+
+@socketio.on('my event')
+def handle_my_custom_event(json):
+    print('reloaded on: '+ str(datetime.now()))
+
+@socketio.on('income chat')
+def handle_chat_message(data):
+    socketio.emit('sendMessage', data)
+
+created_rooms = []
+@socketio.on('join_room')
+def handle_join_room(data):
+    join_room(data['room_id'])
+    if data['room_id'] not in created_rooms:
+        created_rooms.append(data['room_id'])
+
+@socketio.on('start_chat')
+def start_chat(data):
+    me = User.query.filter_by(id=session['user_id']).first()
+    friend_id = data['id']
+    friend = User.query.filter_by(id=friend_id).first()
+    if session['user_id'] not in [f.id for f in friend.followed_users]:
+        print("forbidden")
+        return
+    #could add security
+    # friends = Follow.query.filter_by(follower_id=session['user_id'])
+    # if friend_id not in friends
+    room = get_room_id(session['user_id'], friend_id)
+    return_data = dict()
+    return_data['id'] = friend_id
+    return_data['message'] = data['message']
+    return_data['room_id'] = room
+    return_data['sender_id'] = session['user_id']
+    return_data['sender_username'] = me.username
+    if room in created_rooms:
+        socketio.emit('income_chat', return_data, room=room)
+        print("in created room %s" % room)
+    else:
+        join_room(room)
+        created_rooms.append(room)
+        print("in new room %s" % room)
+        #broadcast the room
+        socketio.emit('broadcast_room', return_data)
+
+def get_room_id(id1, id2):
+    if int(id1) < int(id2):
+        return str(id1) + '_' + str(id2)
+    else:
+        return str(id2) + '_' + str(id1)

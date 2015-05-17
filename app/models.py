@@ -239,6 +239,12 @@ class User(UserMixin, db.Model):
         return Post.query.join(Follow, Follow.followed_id == Post.author_id)\
             .filter(Follow.follower_id == self.id)
 
+    @property
+    def followed_users(self):
+        return User.query.join(Follow, Follow.followed_id == User.id)\
+                .filter(Follow.follower_id == self.id).filter(Follow.followed_id != self.id).all()
+    
+
     def to_json(self):
         json_user = {
             'url': url_for('api.get_post', id=self.id, _external=True),
