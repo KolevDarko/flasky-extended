@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 import os
-<<<<<<< HEAD
 from app import create_app, db, socketio
-=======
 COV = None
 if os.environ.get('FLASK_COVERAGE'):
     import coverage
@@ -17,7 +15,6 @@ if os.path.exists('.env'):
             os.environ[var[0]] = var[1]
 
 from app import create_app, db
->>>>>>> master
 from app.models import User, Follow, Role, Permission, Post, Comment
 from flask.ext.script import Manager, Shell
 from flask.ext.migrate import Migrate, MigrateCommand

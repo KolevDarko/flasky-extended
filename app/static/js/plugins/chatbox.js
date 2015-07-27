@@ -1,13 +1,26 @@
 $(document).ready(function(){
 
 /********* Socket stuff ********************/
-    var socket = io.connect('http://' + document.domain + ':' + location.port);
-    
-    socket.on('connect', function() {
-        socket.emit('my event', {data: 'I\'m connected!'});
+    var chatSocket = io.connect('http://' + document.domain + ':' + location.port+"/chat");
+    var statusSocket = io.connect('http://' + document.domain + ':' + location.port+"/status");
+
+    statusSocket.on('statusUpdate', function(data){
+    	var friend_id = data['id'];
+   		$('.user').each(function(){
+   			if($(this).attr('data-user-id') == friend_id){
+   				if(data['status'] === 'online')
+   					$(this).addClass('online');
+   				else
+   					$(this).removeClass('online');
+   			}
+   		});
     });
 
-    socket.on('income_chat', function(data){
+    chatSocket.on('connect', function() {
+        chatSocket.emit('my event', {data: 'I\'m connected!'});
+    });
+
+    chatSocket.on('income_chat', function(data){
     	var my_id = Cookies.get('user_id');
         if (my_id != data['id'])
         	return false;
@@ -20,14 +33,14 @@ $(document).ready(function(){
 	    addMessage(data['message'], 'msg_received', msgBox);
     });
 
-    socket.on('broadcast_room', function(data){
+    chatSocket.on('broadcast_room', function(data){
     	var msgBox;
         var my_id = Cookies.get('user_id');
         if (my_id == data['id']){
         	addMessageBox(data['sender_username'], data['sender_id']);
         	msgBox = $('#box-'+data['sender_id']);
             addMessage(data['message'], 'msg_received', msgBox);
-            socket.emit('join_room', data);
+            chatSocket.emit('join_room', data);
         }
     });
 
@@ -88,7 +101,7 @@ function addMessageBox(username, userId){
 			parent = $(this).closest('.msg_box');
 			addMessage(msg, 'msg_sent', parent);
 			friend_id = parent.attr('id').split('-')[1];
-            socket.emit('start_chat', {
+            chatSocket.emit('start_chat', {
                 id: friend_id,
                 message: msg
             });

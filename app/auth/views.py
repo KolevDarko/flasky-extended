@@ -2,12 +2,11 @@ from flask import render_template, redirect, request, url_for, flash, session, m
 from flask.ext.login import login_user, logout_user, login_required, \
     current_user
 from . import auth
-from .. import db
+from .. import db, socketio
 from ..models import User
 from ..email import send_email
 from .forms import LoginForm, RegistrationForm, ChangePasswordForm,\
     PasswordResetRequestForm, PasswordResetForm, ChangeEmailForm
-
 
 @auth.before_app_request
 def before_request():
@@ -40,10 +39,16 @@ def login():
         flash('Invalid username or password.')
     return render_template('auth/login.html', form=form)
 
+def send_offline_signal():
+    data = dict()
+    data['status'] = "offline";
+    data['id'] = session['user_id']
+    socketio.emit('statusUpdate', data, namespace='/status')
 
 @auth.route('/logout')
 @login_required
 def logout():
+    send_offline_signal()
     logout_user()
     flash('You have been logged out.')
     return redirect(url_for('main.index'))

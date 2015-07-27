@@ -294,22 +294,33 @@ def get_user_id():
         'id': my_id
     })
 
+@socketio.on('connect', namespace='/status')
+def join_all_rooms_broadcast_status():
+    me = User.query.filter_by(id=session['user_id']).first()
+    for friend in me.followed_users:
+        join_room("status_" + str(friend.id))
+    data = dict()
+    data['id'] = me.id
+    data['status'] = "online"
+    socketio.emit('statusUpdate', data, room="status_" + str(me.id), namespace="/status")
+
+
 @socketio.on('my event')
 def handle_my_custom_event(json):
     print('reloaded on: '+ str(datetime.now()))
 
-@socketio.on('income chat')
+@socketio.on('income chat', namespace="/chat")
 def handle_chat_message(data):
-    socketio.emit('sendMessage', data)
+    socketio.emit('sendMessage', data, namespace="/chat")
 
 created_rooms = []
-@socketio.on('join_room')
+@socketio.on('join_room', namespace="/chat")
 def handle_join_room(data):
     join_room(data['room_id'])
     if data['room_id'] not in created_rooms:
         created_rooms.append(data['room_id'])
 
-@socketio.on('start_chat')
+@socketio.on('start_chat', namespace="/chat")
 def start_chat(data):
     me = User.query.filter_by(id=session['user_id']).first()
     friend_id = data['id']
@@ -328,14 +339,14 @@ def start_chat(data):
     return_data['sender_id'] = session['user_id']
     return_data['sender_username'] = me.username
     if room in created_rooms:
-        socketio.emit('income_chat', return_data, room=room)
+        socketio.emit('income_chat', return_data, room=room, namespace="/chat")
         print("in created room %s" % room)
     else:
         join_room(room)
         created_rooms.append(room)
         print("in new room %s" % room)
         #broadcast the room
-        socketio.emit('broadcast_room', return_data)
+        socketio.emit('broadcast_room', return_data, namespace="/chat")
 
 def get_room_id(id1, id2):
     if int(id1) < int(id2):
