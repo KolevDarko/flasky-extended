@@ -1,7 +1,8 @@
-Flasky
+Flasky extended
 ======
 
-This repository contains the source code examples for my O'Reilly book [Flask Web Development](http://www.flaskbook.com).
-
-The commits and tags in this repository were carefully created to match the sequence in which concepts are presented in the book. Please read the section titled "How to Work with the Example Code" in the book's preface for instructions.
+This repository is a fork from the source code from Miguel Greenberg's book Flask Web Development.
+So far I have added the additional functionalities:
+* Realtime Chat between users, implemented with Flask IO extension
+* Realtime status update of users when they go offline or online.
 
