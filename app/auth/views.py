@@ -43,7 +43,7 @@ def send_offline_signal():
     data = dict()
     data['status'] = "offline";
     data['id'] = session['user_id']
-    socketio.emit('statusUpdate', data, namespace='/status')
+    socketio.emit('statusUpdate', data, room="status_"+session['user_id'], namespace='/status')
 
 @auth.route('/logout')
 @login_required
